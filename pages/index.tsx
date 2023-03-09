@@ -22,6 +22,9 @@ import { useWeb3Contract } from "react-moralis";
 import Staking from "../constants/WStaking.json";
 import Token from "../constants/WToken.json";
 import { setTimeout } from "timers";
+import Box from "@mui/material/Box";
+import Modal from "@mui/material/Modal";
+import Button from "@mui/material/Button";
 
 export default function Home() {
   const [stakeAmount, setStakeAmount] = useState("0");
@@ -36,7 +39,7 @@ export default function Home() {
   const [earned, setEarned] = useState(ethers.utils.parseEther("0"));
   const [approved, setApproved] = useState("false");
   const dispatch = useNotification();
-  const { isWeb3Enabled, account } = useMoralis();
+  const { isWeb3Enabled, account, chainId } = useMoralis();
 
   const { runContractFunction: updateTotalStaked } = useWeb3Contract({
     abi: Staking.abi,
@@ -255,15 +258,115 @@ export default function Home() {
     return finalStr;
   }
 
+  async function changeChain() {
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0x1" }],
+      });
+    } catch (error: any) {
+      if (error.code === 4902) {
+        try {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [
+              {
+                chainId: "0x1", // A 0x-prefixed hexadecimal string
+                chainName: "Ethereum",
+                nativeCurrency: {
+                  name: "Ethereum",
+                  symbol: "ETH", // 2-6 characters long
+                  decimals: 18,
+                },
+                rpcUrls: ["https://mainnet.infura.io/v3/"],
+                blockExplorerUrls: ["https://etherscan.io/"],
+              },
+            ],
+          });
+        } catch (addError) {
+          console.error(addError);
+        }
+      }
+    } finally {
+      setOpen(false);
+    }
+  }
+
+  //Handling network modal
+  const [open, setOpen] = useState(false);
+  const handleOpen = () => {
+    setOpen(true);
+  };
+  const handleClose = () => {
+    setOpen(false);
+  };
+  const style = {
+    position: "absolute" as "absolute",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
+    width: 400,
+    bgcolor: "#191b1f",
+    pt: 2,
+    px: 4,
+    pb: 3,
+    borderRadius: 5,
+  };
+
   useEffect(() => {
-    if (isWeb3Enabled) {
-      updateUI();
+    if (isWeb3Enabled || typeof window.ethereum !== "undefined") {
+      //Checking user's network
+      let currentChain = parseInt(chainId);
+      if (!currentChain) {
+        currentChain = window.ethereum.networkVersion;
+      }
+      console.log(currentChain);
+      if (currentChain.toString() != "1") {
+        setOpen(true);
+      } else {
+        updateUI();
+      }
+    } else {
+      console.log("no provider");
     }
   }, [isWeb3Enabled, account]);
 
   return (
     <>
       <div className="mx-auto mt-5 glassmorphic max-w-2xl p-6 rounded-lg">
+        <Modal
+          open={open}
+          onClose={handleClose}
+          aria-labelledby="parent-modal-title"
+          aria-describedby="parent-modal-description"
+        >
+          <Box
+            sx={{
+              ...style,
+              width: 400,
+              outline: 0,
+              fontFamily: "sans-serif",
+              boxShadow: "0px 0px 10px black",
+            }}
+          >
+            <h2
+              id="parent-modal-title"
+              className="mb-4 text-orange-500 text-lg"
+            >
+              Invalid Chain
+            </h2>
+            <p id="parent-modal-description" className="mb-4">
+              DAPP only operates on <b className="text-blue-400">Ethereum</b>,
+              please click below button to change your network
+            </p>
+            <button
+              className="p-3 bg-white text-black rounded-lg w-full hover:bg-black hover:text-white"
+              onClick={changeChain}
+            >
+              Change Network
+            </button>
+          </Box>
+        </Modal>
         <section aria-labelledby="stake-form">
           <div className="bg-white p-2 sm:p-5 shadow rounded-lg min-h-[70vh] flex flex-col">
             <div className="flex items-end flex-wrap gap-3 justify-between px-4 py-5 sm:px-6 max-w-xl mx-auto">
