@@ -7,3 +7,5 @@ Staking Token:
 https://etherscan.io/address/0x3402652071c682bc90ce88ab9f7c59be4a9faa01
 
 Developed by <b style="color: orange;">expelee</b> team
+
+[![Run on Google Cloud](https://deploy.cloud.run/button.svg)](https://deploy.cloud.run)
